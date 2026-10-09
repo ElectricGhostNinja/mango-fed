@@ -319,4 +319,4 @@ rice. Mango is by [DreamMaoMao](https://github.com/DreamMaoMao) and
 [Mitchell Hashimoto](https://mitchellh.com). Superfile by
 [yorukot](https://github.com/yorukot/superfile). The whole base is
 [mangowc-setup](https://justaguy.dev/drew/mangowc-setup) by
-[JustAGuy Linux](https://justaguy.dev/drew), GPL-2.0.
+[JustAGuy Linux](https://justaguy.dev/drew), GPL-2.0.# nixos-mango
