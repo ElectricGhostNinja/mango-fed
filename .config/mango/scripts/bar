@@ -1,0 +1,28 @@
+#!/bin/sh
+# bar — quickshell helper. Plain `qs` can't find this config (it lives in
+# ~/.config/mango/quickshell, not the default path), so every invocation
+# needs -p; this saves typing it.
+#   bar start     launch the bar unless it's running (config.conf's exec-once)
+#   bar restart   kill + relaunch the bar (default)
+#   bar log       tail the instance log
+#   bar <args>    any other qs subcommand, e.g. `bar ipc show`
+P="$(dirname "$(dirname "$(readlink -f "$0")")")/quickshell"
+
+# The daemon inherits this shell's cwd and passes it to everything it
+# spawns; launched from a directory that later gets deleted, every child
+# `sh` warns "getcwd() failed". Home outlives any terminal's cwd.
+cd "$HOME" || cd /
+
+# quickshell doesn't follow the GTK icon theme on its own (theme icons
+# come out missing), so hand it the one nwg-look / gsettings has set;
+# the launcher grid and the tray then match GTK apps. A theme change
+# takes effect on the next restart (command menu: Restart bar).
+icon_theme=$(gsettings get org.gnome.desktop.interface icon-theme 2>/dev/null | tr -d "'")
+[ -n "$icon_theme" ] && export QS_ICON_THEME="$icon_theme"
+
+case "${1:-restart}" in
+    start)   exec qs -p "$P" -d -n ;;
+    restart) qs -p "$P" kill 2>/dev/null; sleep 0.5; exec qs -p "$P" -d -n ;;
+    log)     exec qs -p "$P" log ;;
+    *)       exec qs -p "$P" "$@" ;;
+esac

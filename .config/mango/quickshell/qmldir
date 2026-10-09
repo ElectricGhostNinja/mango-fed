@@ -1,0 +1,45 @@
+singleton Theme Theme.qml
+singleton Wm Wm.qml
+singleton Sys Sys.qml
+singleton Batteries Batteries.qml
+singleton BarIpc BarIpc.qml
+Bar Bar.qml
+BarModule BarModule.qml
+Tags Tags.qml
+LayoutButton LayoutButton.qml
+LayoutPicker LayoutPicker.qml
+Commands Commands.qml
+Title Title.qml
+Media Media.qml
+MediaPopup MediaPopup.qml
+Metrics Metrics.qml
+Volume Volume.qml
+VolumePopup VolumePopup.qml
+Network Network.qml
+Tray Tray.qml
+Clock Clock.qml
+CalendarPopup CalendarPopup.qml
+Launcher Launcher.qml
+WallpaperPicker WallpaperPicker.qml
+PowerButton PowerButton.qml
+Screenshot Screenshot.qml
+CapsLock CapsLock.qml
+MicMute MicMute.qml
+Updates Updates.qml
+Bell Bell.qml
+Popout Popout.qml
+TweakSlider TweakSlider.qml
+TogglePill TogglePill.qml
+Weather Weather.qml
+WeatherPopup WeatherPopup.qml
+NotifyPopup NotifyPopup.qml
+KeybindsPopup KeybindsPopup.qml
+PowerPopup PowerPopup.qml
+MetricsPopup MetricsPopup.qml
+LauncherPopup LauncherPopup.qml
+QuickTile QuickTile.qml
+RadarView RadarView.qml
+DisplaysPopup DisplaysPopup.qml
+Txt Txt.qml
+SectionLabel SectionLabel.qml
+Toggle Toggle.qml

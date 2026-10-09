@@ -1,0 +1,4 @@
+singleton Theme Theme.qml
+Txt Txt.qml
+SectionLabel SectionLabel.qml
+Toggle Toggle.qml

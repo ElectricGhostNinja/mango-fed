@@ -1,0 +1,23 @@
+#!/bin/sh
+
+# network — toggle the network app (its own quickshell instance, separate
+# from the bar).
+#   network         open it, or close it if it's open
+#   network share   open it on the share view (QR code for the Wi-Fi
+#                   you're on); an open app just switches to it
+
+P="$(dirname "$(dirname "$(readlink -f "$0")")")/quickshell-network"
+
+running() { pgrep -f "qs -p $P -d" >/dev/null 2>&1; }
+
+if [ "$1" = share ]; then
+    running && exec qs -p "$P" ipc call network share
+    NETWORK_VIEW=share exec qs -p "$P" -d -n
+fi
+
+if running; then
+    qs -p "$P" kill
+else
+    # mango floats it (config.conf windowrule for org.quickshell)
+    exec qs -p "$P" -d -n
+fi

@@ -1,0 +1,14 @@
+# ~/.config/mango/env — session environment. Sourced by mango-session (the
+# mangowc package's login wrapper) before the compositor starts, so
+# everything mango spawns — terminals, launchers, the scratchpad — inherits
+# it. Plain KEY=VALUE lines; shell syntax, so $HOME works.
+
+# Ghostty has no session-local config dir the way kitty's
+# KITTY_CONFIG_DIRECTORY worked — it always reads ~/.config/ghostty. The
+# wallpaper-theme palette is a config-file include pointed at from
+# ~/.config/ghostty/config.ghostty, so nothing to export here.
+
+# Software cursor. Virtual machines (virtio-gpu draws the hardware cursor
+# upside down or not at all) and the proprietary NVIDIA driver need it.
+# The installer uncomments this when it finds itself inside a VM.
+#WLR_NO_HARDWARE_CURSORS=1

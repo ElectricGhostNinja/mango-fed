@@ -1,0 +1,16 @@
+/* Generated from wallpaper: wallhaven-6k1dj7_3440x1440.png */
+
+* {
+    bg:          #0f1a1f;
+    fg:          #d2c7bc;
+    accent:      #be4728;
+    accent-2:    #1d91c9;
+    border:      #be4728;
+    urgent:      #b3624d;
+    selected-fg: #d2c7bc;
+    entry-fg:    #1d91c9;
+    prompt-fg:   #be4728;
+    header:      #1d91c9;
+
+    background-color: @bg;
+}

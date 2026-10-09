@@ -1,0 +1,7 @@
+#!/bin/sh
+# launcher — open the bar's app launcher (quickshell/LauncherPopup.qml).
+# rofi only runs when the bar isn't there to answer, so Super+space still
+# launches things if quickshell has crashed.
+CONFIG_DIR="$(dirname "$(dirname "$(readlink -f "$0")")")"
+qs -p "$CONFIG_DIR/quickshell" ipc call launcher toggle >/dev/null 2>&1 && exit 0
+exec rofi -show drun -show-icons -theme "$CONFIG_DIR/rofi/config.rasi"

@@ -1,0 +1,73 @@
+#!/bin/bash
+# radar LAT LON [ZOOM] — fetch the map tiles for the weather card's radar
+# view and print where they are.
+#
+# Basemap: Esri's dark gray canvas (base + a separate labels layer, so
+# the rain draws between land and names).
+# Rain: RainViewer's free radar mosaic, the last few 10-minute frames, so
+# the card can play them as a loop. Everything lands in the cache dir,
+# base tiles for good, frames pruned as they age out; a second run for
+# the same spot is mostly hits. Output, one item per line:
+#   zoom Z
+#   center X Y            fractional tile coordinates of LAT,LON
+#   base DIR              DIR/Z_X_Y.jpg (land) and Z_X_Y_ref.png (labels)
+#   frame EPOCH DIR       oldest first
+set -u
+
+lat=${1:?lat}
+lon=${2:?lon}
+z=${3:-7}
+cache=${XDG_CACHE_HOME:-$HOME/.cache}/mango/radar
+ua="mangowc-setup weather radar (https://justaguy.dev)"
+frames=6
+
+mkdir -p "$cache/base" || exit 1
+
+# lat/lon -> fractional slippy-map tile coordinates at zoom z
+read -r cx cy < <(awk -v lat="$lat" -v lon="$lon" -v z="$z" 'BEGIN {
+    n = 2 ^ z; pi = atan2(0, -1); r = lat * pi / 180
+    printf "%.4f %.4f\n", (lon + 180) / 360 * n, (1 - log(sin(r) / cos(r) + 1 / cos(r)) / pi) / 2 * n }')
+ix=${cx%.*}; iy=${cy%.*}
+n=$((1 << z))
+
+# the frame list first: no rain data, no map
+maps=$(curl -sf -m 10 -A "$ua" https://api.rainviewer.com/public/weather-maps.json) || {
+    echo "radar: couldn't reach RainViewer" >&2; exit 1; }
+host=$(printf '%s' "$maps" | sed -n 's/.*"host":"\([^"]*\)".*/\1/p')
+# past frames as "time path", newest last
+list=$(printf '%s' "$maps" | tr '{' '\n' | sed -n 's/"time":\([0-9]*\),"path":"\([^"]*\)".*/\1 \2/p' | tail -n "$frames")
+[ -n "$list" ] || { echo "radar: no frames" >&2; exit 1; }
+
+# every tile we need, as curl arguments: fetch in parallel, only what's missing
+args=()
+for dy in -1 0 1; do
+    for dx in -1 0 1; do
+        x=$(( (ix + dx + n) % n )); y=$((iy + dy))
+        [ "$y" -lt 0 ] || [ "$y" -ge "$n" ] && continue
+        esri=https://server.arcgisonline.com/ArcGIS/rest/services/Canvas
+        f="$cache/base/${z}_${x}_${y}.jpg"
+        [ -s "$f" ] || args+=(-o "$f" "$esri/World_Dark_Gray_Base/MapServer/tile/$z/$y/$x")
+        f="$cache/base/${z}_${x}_${y}_ref.png"
+        [ -s "$f" ] || args+=(-o "$f" "$esri/World_Dark_Gray_Reference/MapServer/tile/$z/$y/$x")
+        while read -r t path; do
+            mkdir -p "$cache/$t"
+            f="$cache/$t/${z}_${x}_${y}.png"
+            [ -s "$f" ] || args+=(-o "$f" "$host$path/256/$z/$x/$y/2/1_1.png")
+        done <<< "$list"
+    done
+done
+if [ "${#args[@]}" -gt 0 ]; then
+    curl -sf -m 30 -Z --parallel-max 8 -A "$ua" "${args[@]}" || echo "radar: some tiles failed" >&2
+fi
+
+# frames older than the ones we keep
+keep=$(printf '%s\n' "$list" | cut -d' ' -f1)
+for d in "$cache"/[0-9]*/; do
+    d=${d%/}; t=${d##*/}
+    grep -qx "$t" <<< "$keep" || rm -rf "$d"
+done
+
+echo "zoom $z"
+echo "center $cx $cy"
+echo "base $cache/base"
+while read -r t _; do echo "frame $t $cache/$t"; done <<< "$list"

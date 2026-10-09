@@ -1,0 +1,16 @@
+#!/bin/sh
+# idle — swayidle with the setup's policy (config.conf's exec-once; the
+# command menu's "Lock on idle" tile restarts it):
+#   15 min idle   screen off (wlopm), on again at the first input
+#   lock-idle = 1 lock the screen 30 s before that, and before the
+#                 machine sleeps
+# "Keep awake" (command menu) holds a logind idle inhibitor, which
+# pauses all of this.
+C="$(dirname "$(dirname "$(readlink -f "$0")")")"
+
+pkill -x swayidle 2>/dev/null
+set -- -w timeout 900 'wlopm --off \*' resume 'wlopm --on \*'
+if [ "$(cat "$C/lock-idle" 2>/dev/null)" = 1 ]; then
+    set -- "$@" timeout 870 "$C/scripts/lock" before-sleep "$C/scripts/lock"
+fi
+exec swayidle "$@"

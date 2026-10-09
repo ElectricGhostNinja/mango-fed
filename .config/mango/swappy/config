@@ -1,0 +1,10 @@
+# swappy — the screenshot editor behind `scripts/screenshot edit` (Super+Alt+S).
+# The installer links ~/.config/swappy/config here (unless you have your own).
+[Default]
+# Ctrl+S: same folder and naming as the other screenshots
+save_dir=$HOME/Screenshots
+save_filename_format=screenshot_%Y-%m-%d_%H-%M-%S.png
+# close once it's saved or copied (Ctrl+C)
+early_exit=true
+# tool panel (colours, sizes) open from the start
+show_panel=true

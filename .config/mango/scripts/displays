@@ -1,0 +1,82 @@
+#!/bin/bash
+# displays — the Displays card's back end (wlr-randr underneath).
+#   displays list          current outputs as JSON (wlr-randr --json)
+#   displays save          read the layout on stdin, keep it in the state file
+#   displays apply         put the saved layout back (bar start: only the
+#                          outputs that differ, so a restart doesn't modeset)
+#   displays forget        drop the saved layout (mango's config rules again)
+#   displays hotplug       a monitor came or went: apply, then give any
+#                          output showing no wallpaper the current one
+# State file: one output per line —
+#   name<TAB>on|off<TAB>WxH@R<TAB>x,y<TAB>scale<TAB>transform<TAB>vrr(0/1)<TAB>make|model|serial
+# Outputs that aren't plugged in are skipped, not forgotten, so a laptop's
+# dock layout survives a trip; a different monitor on the same port is
+# skipped too (the last field), so it doesn't inherit the old one's
+# rotation or mode.
+set -u
+
+state=${XDG_CONFIG_HOME:-$HOME/.config}/mango/displays.conf
+
+case "${1:-list}" in
+list)
+    exec wlr-randr --json
+    ;;
+save)
+    cat > "$state"
+    ;;
+forget)
+    rm -f "$state"
+    ;;
+hotplug)
+    "$0" apply
+    # awww paints the outputs that exist when it's told; a new one gets
+    # its background colour until told again. No transition: the others
+    # are showing this image already.
+    command -v awww >/dev/null 2>&1 || exit 0
+    img=$(cat "${XDG_CACHE_HOME:-$HOME/.cache}/mango/current_wallpaper" 2>/dev/null)
+    [ -f "$img" ] || img=$(sed -n 's/^exec-once=awww img \(.*\) --resize crop$/\1/p' \
+        "${XDG_CONFIG_HOME:-$HOME/.config}/mango/config.conf" | sed "s|^\$HOME|$HOME|")
+    [ -f "$img" ] || exit 0
+    sleep 1   # let awww see the output first
+    bare=$(awww query 2>/dev/null | sed -n 's/^: \([^:]*\):.*currently displaying: color.*/\1/p' | paste -sd,)
+    [ -n "$bare" ] && exec awww img "$img" --outputs "$bare" --resize crop --transition-type none
+    ;;
+apply)
+    [ -s "$state" ] || exit 0
+    command -v wlr-randr >/dev/null 2>&1 || exit 0
+    # what's live now, one line per output in the state file's shape
+    now=$(wlr-randr --json | python3 -c '
+import json, sys
+for o in json.load(sys.stdin):
+    m = next((m for m in o["modes"] if m.get("current")), None)
+    mode = "%dx%d@%g" % (m["width"], m["height"], round(m["refresh"], 3)) if m else ""
+    p = o.get("position") or {"x": 0, "y": 0}
+    vrr = o.get("adaptive_sync")
+    ident = "|".join(o.get(k) or "" for k in ("make", "model", "serial"))
+    print("\t".join([o["name"], "on" if o["enabled"] else "off", mode,
+          "%d,%d" % (p["x"], p["y"]), "%g" % o.get("scale", 1),
+          o.get("transform", "normal"), "1" if vrr is True else "0", ident]))')
+    args=()
+    while IFS=$'\t' read -r name on mode pos scale transform vrr ident; do
+        [ -n "$name" ] || continue
+        line=$(printf '%s\n' "$now" | awk -F'\t' -v n="$name" '$1 == n')
+        [ -n "$line" ] || continue                       # not plugged in
+        have=${line##*	}
+        [ -n "$ident" ] && [ "$ident" != "$have" ] && continue   # another monitor on that port
+        wanted=$(printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' "$name" "$on" "$mode" "$pos" "$scale" "$transform" "$vrr" "$have")
+        [ "$line" = "$wanted" ] && continue              # already so
+        args+=(--output "$name")
+        if [ "$on" = off ]; then
+            args+=(--off)
+        else
+            args+=(--on --mode "$mode" --pos "$pos" --scale "$scale" --transform "$transform"
+                   --adaptive-sync "$([ "$vrr" = 1 ] && echo enabled || echo disabled)")
+        fi
+    done < "$state"
+    [ "${#args[@]}" -gt 0 ] && exec wlr-randr "${args[@]}"
+    ;;
+*)
+    echo "usage: displays list|save|apply|forget|hotplug" >&2
+    exit 2
+    ;;
+esac

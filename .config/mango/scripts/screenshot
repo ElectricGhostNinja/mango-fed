@@ -1,0 +1,52 @@
+#!/bin/sh
+# screenshot [full|region|copy|edit] — grim, plus slurp to drag a region.
+#   full     whole screen, saved to ~/Screenshots        (Super+S, Print)
+#   region   drag a region, saved                        (Super+Shift+S, Shift+Print)
+#   copy     drag a region, onto the clipboard only      (Super+Ctrl+S, Ctrl+Print)
+#   edit     drag a region, open it in swappy to draw    (Super+Alt+S)
+#            arrows / boxes / text / blur; Ctrl+S saves it to ~/Screenshots,
+#            Ctrl+C copies, either closes it (swappy/config)
+DIR="$HOME/Screenshots"
+mkdir -p "$DIR"
+mode="${1:-region}"
+
+if [ "$mode" != full ]; then
+    geom=$(slurp) || exit 0     # Escape while dragging: nothing happens
+fi
+
+# screenshot_2026-09-29_13-35-31.png: reads as a date, sorts by time, no
+# spaces or colons (fine on SMB/NAS shares); taken the moment the region
+# is set. Two in one second get _2, _3 instead of overwriting.
+STAMP=$(date +%Y-%m-%d_%H-%M-%S)
+OUT="$DIR/screenshot_$STAMP.png"
+n=2
+while [ -e "$OUT" ]; do
+    OUT="$DIR/screenshot_${STAMP}_$n.png"
+    n=$((n + 1))
+done
+
+case "$mode" in
+    full)
+        grim "$OUT" ;;
+    copy)
+        # a throwaway file only so the notification can show the shot
+        OUT="${XDG_RUNTIME_DIR:-/tmp}/screenshot-clipboard.png"
+        grim -g "$geom" "$OUT" || exit 1
+        # wl-copy stays behind to serve the clipboard; point its output at
+        # /dev/null so it doesn't hold open the pipe of whoever ran this
+        wl-copy --type image/png < "$OUT" >/dev/null 2>&1 || exit 1
+        notify-send -a screenshot -i "$OUT" "Screenshot copied" "Paste it anywhere"
+        exit 0 ;;
+    edit)
+        command -v swappy >/dev/null || {
+            notify-send -a screenshot "swappy is not installed" "sudo apt install swappy"
+            exit 1
+        }
+        grim -g "$geom" - | swappy -f -
+        exit 0 ;;
+    *)
+        grim -g "$geom" "$OUT" ;;
+esac
+
+[ -f "$OUT" ] || exit 1
+notify-send -a screenshot -i "$OUT" "Screenshot saved" "$(basename "$OUT")"

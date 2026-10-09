@@ -1,0 +1,93 @@
+#!/bin/sh
+# procs — one snapshot of what's running, for the bar's metrics card
+# (quickshell/MetricsPopup.qml). The card diffs two snapshots to get the
+# CPU each process is using now; ps only knows the average since each one
+# started. Output, tab-separated:
+#   cpu   <total jiffies, all cores>
+#   mem   <MemTotal kB>  <MemAvailable kB>
+#   load  <1-minute load average>
+#   me    <our uid>
+#   <pid> <utime+stime jiffies>  <rss kB>  <uid>  <name>
+# name is the program from the command line, so browser and Electron
+# helpers group under their app instead of thread names like MainThread;
+# kernel threads (no command line) use the kernel's name, minus any /suffix.
+# Files are opened with getline: a process that exits mid-read is skipped,
+# where naming it on awk's command line would be fatal.
+cd /proc || exit 1
+exec awk -v page_kb="$(( $(getconf PAGESIZE) / 1024 ))" -v me="$(id -u)" '
+BEGIN {
+    RS = "\n"
+    while ((getline line < "stat") > 0)
+        if (line ~ /^cpu /) {
+            n = split(line, f, " ")
+            for (i = 2; i <= 9 && i <= n; i++) total += f[i]
+            break
+        }
+    close("stat")
+    printf "cpu\t%d\n", total
+
+    while ((getline line < "meminfo") > 0) {
+        split(line, f, " ")
+        if (f[1] == "MemTotal:") mtotal = f[2]
+        else if (f[1] == "MemAvailable:") mavail = f[2]
+    }
+    close("meminfo")
+    printf "mem\t%d\t%d\n", mtotal, mavail
+
+    if ((getline line < "loadavg") > 0) {
+        split(line, f, " ")
+        printf "load\t%s\n", f[1]
+    }
+    close("loadavg")
+    printf "me\t%s\n", me
+
+    for (a = 1; a < ARGC; a++) {
+        pid = ARGV[a]
+        if (pid !~ /^[0-9]+$/) continue
+
+        RS = "\n"
+        ok = (getline line < (pid "/stat")) > 0
+        close(pid "/stat")
+        if (!ok) continue
+        # comm is in parens and may hold spaces or ")"; the fields after
+        # the last ")" start at the state (field 3 of the man page)
+        if (!match(line, /\)[^)]*$/)) continue
+        open = index(line, "(")
+        comm = substr(line, open + 1, RSTART - open - 1)
+        split(substr(line, RSTART + 2), f, " ")
+        ticks = f[12] + f[13]
+        rss = f[22] * page_kb
+
+        # owner (real uid): the card only offers to end our own processes
+        uid = ""
+        while ((getline line < (pid "/status")) > 0)
+            if (line ~ /^Uid:/) {
+                split(line, f, " ")
+                uid = f[2]
+                break
+            }
+        close(pid "/status")
+        if (uid == "") continue
+
+        # argv[0]: first NUL-separated field of the command line
+        RS = "\0"
+        name = ""
+        if ((getline arg0 < (pid "/cmdline")) > 0) {
+            sub(/ .*/, "", arg0)     # "sshd: drew@pts/0" rewrites
+            sub(/.*\//, "", arg0)
+            sub(/:$/, "", arg0)
+            name = arg0
+        }
+        close(pid "/cmdline")
+        # zygote-style children run as /proc/self/exe
+        if (name == "exe") name = comm
+        # kernel threads: kworker/u64:2 and friends group as kworker
+        if (name == "") {
+            name = comm
+            sub(/\/.*/, "", name)
+        }
+
+        printf "%s\t%d\t%d\t%s\t%s\n", pid, ticks, rss, uid, name
+    }
+    exit
+}' [0-9]*

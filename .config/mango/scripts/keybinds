@@ -1,0 +1,157 @@
+#!/bin/sh
+# keybinds — every bind in config.conf as rows for the bar's keybinds popup
+# (quickshell/KeybindsPopup.qml), one per line, tab-separated:
+#   section  keys  description  line
+# keys: alternatives split by "|", each one "+"-joined keycaps.
+#   keybinds          print the rows
+#   keybinds open N   open config.conf in geany at line N
+#
+# What it reads from config.conf:
+#   "# --- name ---"   starts a section (name ends at ":", "(" or "---")
+#   "# Text"           right above a bind describes it; notes go above that.
+#                      Above a run of back-to-back binds it's a note for the
+#                      group, and each bind is labelled from its action.
+# Binds with the same description in a section share a row (arrows and
+# hjkl, XF86 keys and Super+F12), and runs of view/tag binds fold into one.
+CONF="$(dirname "$(dirname "$(readlink -f "$0")")")/config.conf"
+
+if [ "$1" = open ]; then
+    exec geany --line="${2:-1}" "$CONF"
+fi
+
+exec awk '
+function trim(s) { gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
+function isbind(s) { return s ~ /^(bind[a-z]*|mousebind|axisbind|gesturebind)=/ }
+function isheader(s) { return s ~ /^#[ \t]*---/ }
+
+function mods(m,   n, a, i, out) {
+    if (toupper(m) == "NONE") return ""
+    n = split(m, a, "+")
+    for (i = 1; i <= n; i++)
+        out = out (out != "" ? "+" : "") toupper(substr(a[i], 1, 1)) tolower(substr(a[i], 2))
+    return out
+}
+function keyname(k) {
+    if (k in K) return K[k]
+    if (length(k) == 1) return toupper(k)
+    sub(/^XF86/, "", k)
+    return k
+}
+function combo(m, k) { m = mods(m); return m != "" ? m "+" k : k }
+
+function label(action, arg) {
+    if (action == "focusdir")        return "Focus " arg
+    if (action == "exchange_client") return "Swap window " arg
+    if (action == "focusmon")        return "Focus monitor " arg
+    if (action == "tagmon")          return "Send window to monitor " arg
+    if (action == "setmfact")        return (arg ~ /^-/ ? "Shrink" : "Grow") " master area"
+    if (action == "incnmaster")      return (arg ~ /^-/ ? "Fewer" : "More") " master windows"
+    if (action == "focusstack")      return (arg == "prev" ? "Previous" : "Next") " window"
+    if (action == "viewtoleft")      return "Previous tag"
+    if (action == "viewtoright")     return "Next tag"
+    if (action == "viewtoleft_have_client")  return "Previous tag, taking the window"
+    if (action == "viewtoright_have_client") return "Next tag, taking the window"
+    if (action == "toggleoverview")  return "Overview"
+    if (action == "killclient")      return "Close window"
+    if (action == "togglefloating")  return "Toggle floating"
+    if (action == "togglefullscreen") return "Fullscreen"
+    if (action == "moveresize")      return arg == "curresize" ? "Resize window" : "Move window"
+    if (action == "spawn") { sub(/^[^ ]*\//, "", arg); return arg }
+    return trim(action " " arg)
+}
+
+# view/tag N: fold a run into one row ("View tag 1–12")
+function foldable(action, arg) {
+    return (action == "view" || action == "tag" || action == "toggleview") && arg ~ /^[0-9]+$/
+}
+function folddesc(action, a, b,   tags) {
+    tags = (a == b) ? a : a "–" b
+    if (action == "view") return "View tag " tags
+    if (action == "tag")  return "Move window to tag " tags
+    return "Toggle tag " tags
+}
+
+BEGIN {
+    FS = ","
+    K["Return"] = "Enter"; K["space"] = "Space"; K["Tab"] = "Tab"; K["Escape"] = "Esc"
+    K["Left"] = "←"; K["Right"] = "→"; K["Up"] = "↑"; K["Down"] = "↓"
+    K["grave"] = "`"; K["comma"] = ","; K["period"] = "."; K["slash"] = "/"
+    K["minus"] = "-"; K["equal"] = "="; K["semicolon"] = ";"; K["apostrophe"] = "\047"
+    K["bracketleft"] = "["; K["bracketright"] = "]"; K["backslash"] = "\\"
+    K["plus"] = "Plus"; K["BackSpace"] = "Backspace"; K["Delete"] = "Del"; K["Print"] = "PrtSc"
+    K["XF86AudioRaiseVolume"] = "Vol Up"; K["XF86AudioLowerVolume"] = "Vol Down"
+    K["XF86AudioMute"] = "Mute"; K["XF86AudioMicMute"] = "Mic Mute"
+    K["XF86MonBrightnessUp"] = "Brightness Up"; K["XF86MonBrightnessDown"] = "Brightness Down"
+    K["btn_left"] = "Left click"; K["btn_right"] = "Right click"; K["btn_middle"] = "Middle click"
+}
+
+{ L[NR] = $0 }
+
+END {
+    section = "other"; nrows = 0; lastfold = 0
+    for (i = 1; i <= NR; i++) {
+        line = L[i]
+        if (isheader(line)) {
+            s = line
+            sub(/^#[ \t]*---[ \t]*/, "", s)
+            sub(/[ \t]*(---|:|\().*$/, "", s)
+            section = s
+            continue
+        }
+        if (!isbind(line)) { if (line !~ /^#/) lastfold = 0; continue }
+
+        type = substr(line, 1, index(line, "=") - 1)
+        n = split(substr(line, index(line, "=") + 1), f, ",")
+        for (j = 1; j <= n; j++) f[j] = trim(f[j])
+
+        # the fields past the action rejoin with the commas they were split on
+        first = (type == "gesturebind") ? 4 : 3
+        action = f[first]; arg = ""
+        for (j = first + 1; j <= n; j++) arg = arg (j > first + 1 ? "," : "") f[j]
+
+        if (type == "mousebind")        keys = combo(f[1], keyname(f[2]))
+        else if (type == "axisbind")    keys = combo(f[1], "Scroll " tolower(f[2]))
+        else if (type == "gesturebind") keys = combo(f[1], f[3] "-finger swipe " f[2])
+        else                            keys = combo(f[1], keyname(f[2]))
+
+        if (foldable(action, arg)) {
+            fid = section SUBSEP f[1] SUBSEP action
+            if (lastfold && FOLD[lastfold] == fid) {
+                FKEYS[lastfold] = FKEYS[lastfold] " " keyname(f[2])
+                FLAST[lastfold] = arg
+                continue
+            }
+            nrows++
+            SEC[nrows] = section; LINE[nrows] = i
+            FOLD[nrows] = fid; FMODS[nrows] = f[1]; FACT[nrows] = action
+            FKEYS[nrows] = keyname(f[2]); FFIRST[nrows] = arg; FLAST[nrows] = arg
+            lastfold = nrows
+            continue
+        }
+        lastfold = 0
+
+        desc = ""
+        if (L[i-1] ~ /^#/ && !isheader(L[i-1]) && !isbind(L[i+1])) {
+            desc = L[i-1]
+            sub(/^#+[ \t]*/, "", desc)
+        }
+        if (desc == "") desc = label(action, arg)
+
+        k = section SUBSEP desc
+        if (k in SEEN) { KEYS[SEEN[k]] = KEYS[SEEN[k]] "|" keys; continue }
+        nrows++
+        SEEN[k] = nrows
+        SEC[nrows] = section; KEYS[nrows] = keys; DESC[nrows] = desc; LINE[nrows] = i
+    }
+
+    for (r = 1; r <= nrows; r++) {
+        if (r in FOLD) {
+            fk = FKEYS[r]
+            sub(/1 2 3 4 5 6 7 8 9/, "1…9", fk)
+            KEYS[r] = combo(FMODS[r], fk)
+            DESC[r] = folddesc(FACT[r], FFIRST[r], FLAST[r])
+        }
+        printf "%s\t%s\t%s\t%d\n", SEC[r], KEYS[r], DESC[r], LINE[r]
+    }
+}
+' "$CONF"

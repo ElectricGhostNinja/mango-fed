@@ -1,0 +1,43 @@
+#!/bin/sh
+# sysinfo — one snapshot for the metrics card (quickshell/MetricsPopup.qml),
+# next to scripts/procs: local disks, disk activity counters and
+# temperatures. Tab-separated:
+#   disk  <mount>  <size kB>  <used kB>  <fstype>  <encrypted 1/0>
+#                                            local filesystems, one per device;
+#                                            encrypted = inside LUKS (lsblk)
+#   io    <sectors read>  <sectors written>  summed over whole disks (512 B each)
+#   temp  <sensor>  <label>  <°C>            every hwmon temperature
+# Network mounts are left out on purpose: asking an unreachable NAS for
+# its size can hang, so the card asks for those on its own, time-limited.
+# /boot and EFI partitions are left out too — small, and never the answer
+# to "what's filling my disk".
+
+df -P -l -T -x tmpfs -x devtmpfs -x efivarfs -x overlay -x squashfs -x vfat 2>/dev/null |
+    awk 'NR > 1 {
+        mnt = $7
+        for (i = 8; i <= NF; i++) mnt = mnt " " $i
+        # one row per device: btrfs subvolumes and bind mounts repeat it
+        if (mnt ~ /^\/boot/ || $1 in seen) next
+        seen[$1] = 1
+        printf "%s\t%s\t%s\t%s\t%s\n", $1, mnt, $3, $4, $2
+    }' |
+    while IFS="$(printf '\t')" read -r dev mnt size used fs; do
+        # the device or anything under it (LVM on LUKS too) is a crypt layer
+        if lsblk -nso TYPE "$dev" 2>/dev/null | grep -qx crypt; then enc=1; else enc=0; fi
+        printf 'disk\t%s\t%s\t%s\t%s\t%s\n' "$mnt" "$size" "$used" "$fs" "$enc"
+    done
+
+# whole disks only (partitions would count twice)
+awk '$3 ~ /^(nvme[0-9]+n[0-9]+|sd[a-z]+|vd[a-z]+|xvd[a-z]+|mmcblk[0-9]+)$/ {
+        r += $6; w += $10
+    }
+    END { printf "io\t%d\t%d\n", r, w }' /proc/diskstats
+
+for f in /sys/class/hwmon/hwmon*/temp*_input; do
+    [ -r "$f" ] || continue
+    v=$(cat "$f" 2>/dev/null) || continue
+    [ -n "$v" ] || continue
+    dir=${f%/*}
+    label=$(cat "${f%_input}_label" 2>/dev/null) || label=$(basename "${f%_input}")
+    printf 'temp\t%s\t%s\t%s\n' "$(cat "$dir/name" 2>/dev/null)" "$label" "$((v / 1000))"
+done

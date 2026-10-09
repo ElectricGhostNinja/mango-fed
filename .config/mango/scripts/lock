@@ -1,0 +1,42 @@
+#!/bin/sh
+# lock — lock the screen (quickshell-lock, its own qs instance).
+#   lock            lock now, in the background; nothing if already locked
+#   lock style      print the background style: rain | blur
+#   lock style X    set it (the next lock uses it)
+# The default style is rain on Butterbian, blur elsewhere.
+C="$(dirname "$(dirname "$(readlink -f "$0")")")"
+P="$C/quickshell-lock"
+
+case "${1:-}" in
+style)
+    if [ -n "${2:-}" ]; then
+        printf '%s\n' "$2" > "$C/lock-style"
+        exit 0
+    fi
+    s=$(cat "$C/lock-style" 2>/dev/null)
+    if [ -z "$s" ]; then
+        if grep -qs '^NAME="Butterbian"' /etc/os-release; then s=rain; else s=blur; fi
+    fi
+    echo "$s"
+    exit 0
+    ;;
+esac
+
+pgrep -f "^qs -p $P" >/dev/null && exit 0
+cd "$HOME" || cd /
+LOCK_STYLE=$("$0" style)
+# the wallpaper for the blur style: the picker's note of it, else what
+# awww is showing, else config.conf's exec-once line (a fresh install)
+wall=$(cat "$HOME/.cache/mango/current_wallpaper" 2>/dev/null)
+[ -f "$wall" ] || wall=$(awww query 2>/dev/null | sed -n 's/.*currently displaying: image: //p' | head -n1)
+[ -f "$wall" ] || wall=$(sed -n 's/^exec-once=awww img \(.*\) --resize crop$/\1/p' "$C/config.conf" | sed "s|^\$HOME|$HOME|")
+LOCK_WALLPAPER=$wall
+# the distro's name in the corner, when it's Butterbian
+LOCK_BRAND=$(grep -qs '^NAME="Butterbian"' /etc/os-release && echo butterbian)
+export LOCK_STYLE LOCK_WALLPAPER LOCK_BRAND
+# detached: swayidle and the bar must not wait for the unlock
+if command -v setsid >/dev/null 2>&1; then
+    setsid -f qs -p "$P" >/dev/null 2>&1
+else
+    qs -p "$P" >/dev/null 2>&1 &
+fi

@@ -1,0 +1,16 @@
+# ---- dotfiles repo: only explicit paths are tracked ----
+/*
+!/.gitignore
+!/.zshrc
+!/.bashrc
+!/.config
+
+/.config/*
+!/.config/mango
+!/.config/ghostty
+!/.config/fastfetch
+!/.config/fish
+
+# mango backup/runtime junk
+/.config/mango/config.conf~
+/.config/mango/launcher-history

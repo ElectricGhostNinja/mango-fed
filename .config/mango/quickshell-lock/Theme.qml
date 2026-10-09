@@ -1,0 +1,1 @@
+../quickshell-network/Theme.qml
