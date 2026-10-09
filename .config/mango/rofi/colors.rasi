@@ -1,16 +1,16 @@
-/* Generated from wallpaper: wallhaven-6k1dj7_3440x1440.png */
+/* Generated from wallpaper: a_cartoon_of_a_woman_in_a_short_skirt_and_glasses.jpg */
 
 * {
-    bg:          #0f1a1f;
-    fg:          #d2c7bc;
-    accent:      #be4728;
-    accent-2:    #1d91c9;
-    border:      #be4728;
-    urgent:      #b3624d;
-    selected-fg: #d2c7bc;
-    entry-fg:    #1d91c9;
-    prompt-fg:   #be4728;
-    header:      #1d91c9;
+    bg:          #372e20;
+    fg:          #d2c9bc;
+    accent:      #d3a969;
+    accent-2:    #d194aa;
+    border:      #d3a969;
+    urgent:      #cb9186;
+    selected-fg: #d2c9bc;
+    entry-fg:    #d194aa;
+    prompt-fg:   #d3a969;
+    header:      #d194aa;
 
     background-color: @bg;
 }

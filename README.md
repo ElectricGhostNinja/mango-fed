@@ -151,7 +151,7 @@ Details in [`config/quickshell/README.md`](config/quickshell/README.md).
 re-colors itself from it: the bar, rofi, dunst, ghostty and mango's own border
 colors — then the new wallpaper wipes across the screen. The palette is
 extracted right in the picker; nothing to configure. Wallpapers live in
-`~/.config/mango/wallpaper/`. Drop in your own and they show up next time you
+`~/.wallpapers/` (any depth), drop in your own and they show up next time you
 open it.
 
 ---
@@ -242,8 +242,10 @@ graphics. Every one of these is a toggle in the picker.
 ├── rofi/                 # config / power .rasi (colors theme-managed)
 ├── dunst/                # dunstrc (theme-managed)
 ├── polybar/colors.ini    # the live palette the bar watches (name is historical)
-└── wallpaper/
 ```
+
+Wallpapers aren't in the repo: they live at `~/.wallpapers/`, scanned
+recursively by the picker.
 
 ---
 

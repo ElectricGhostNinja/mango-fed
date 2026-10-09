@@ -168,7 +168,7 @@ fi
 pgrep -x awww-daemon >/dev/null 2>&1 || { awww-daemon >/dev/null 2>&1 9>&- & sleep 0.5; }
 awww img "$IMG" --resize crop --transition-type wipe --transition-angle 30 \
     --transition-fps 60 --transition-duration 1 >/dev/null 2>&1 || true
-sed -i "s|^exec-once=awww img .*|exec-once=awww img \$HOME${CONFIG_DIR#"$HOME"}/wallpaper/$(basename "$IMG") --resize crop|" "$CONFIG_DIR/config.conf"
+sed -i "s|^exec-once=awww img .*|exec-once=awww img \$HOME/.wallpapers/$(basename "$IMG") --resize crop|" "$CONFIG_DIR/config.conf"
 mkdir -p "$HOME/.cache/mango" "$HOME/.config/dunst"
 echo "$IMG" > "$HOME/.cache/mango/current_wallpaper"
 ln -sfn "$CONFIG_DIR/dunst/dunstrc" "$HOME/.config/dunst/dunstrc"

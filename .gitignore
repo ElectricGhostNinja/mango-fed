@@ -14,3 +14,28 @@
 # mango backup/runtime junk
 /.config/mango/config.conf~
 /.config/mango/launcher-history
+
+# --- ~/.wallpapers: track image files only ---
+# Images keep the picker and the collection versioned; nested git repos,
+# licenses, readmes, logs and other junk are never committed.
+!/.wallpapers
+/.wallpapers/*
+/.wallpapers/**/*
+!.wallpapers/**/*.png
+!.wallpapers/**/*.jpg
+!.wallpapers/**/*.jpeg
+!.wallpapers/**/*.webp
+!.wallpapers/**/*.gif
+!.wallpapers/**/*.PNG
+!.wallpapers/**/*.JPG
+!.wallpapers/**/*.JPEG
+!.wallpapers/**/*.WEBP
+!.wallpapers/**/*.GIF
+!/.wallpapers/**/
+/.wallpapers/**/.git/
+/.wallpapers/**/.git/**
+/.wallpapers/**/.github/
+/.wallpapers/**/spam/
+# embedded repo clone — git records it as a gitlink no matter what the
+# ignore rules say, so take the whole directory out of versioning
+/.wallpapers/**/walls-catppuccin-mocha/
