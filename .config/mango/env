@@ -12,3 +12,7 @@
 # upside down or not at all) and the proprietary NVIDIA driver need it.
 # The installer uncomments this when it finds itself inside a VM.
 #WLR_NO_HARDWARE_CURSORS=1
+
+# 8BitDo Ultimate 2 Wireless (VID/PID 2dc8:310b): label it as an Xbox 360
+# pad so SDL/Steam don't report it as "Generic"/"Unknown" in XInput mode.
+SDL_GAMECONTROLLERTYPE=0x2dc8/0x310b=Xbox360

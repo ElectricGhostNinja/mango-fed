@@ -2,3 +2,4 @@
 # on every wallpaper pick; reload live with SIGUSR2. Keeps the generated
 # colors out of this file and under ~/.config/mango.
 config-file = ~/.config/mango/ghostty/wallpaper.conf
+theme = TokyoNight Storm

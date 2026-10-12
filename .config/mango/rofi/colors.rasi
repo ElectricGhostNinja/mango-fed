@@ -1,16 +1,16 @@
-/* Generated from wallpaper: a_cartoon_of_a_woman_in_a_short_skirt_and_glasses.jpg */
+/* Generated from wallpaper: a_cartoon_of_a_man_riding_a_horse_in_a_forest.jpg */
 
 * {
-    bg:          #372e20;
-    fg:          #d2c9bc;
-    accent:      #d3a969;
-    accent-2:    #d194aa;
-    border:      #d3a969;
-    urgent:      #cb9186;
-    selected-fg: #d2c9bc;
-    entry-fg:    #d194aa;
-    prompt-fg:   #d3a969;
-    header:      #d194aa;
+    bg:          #201f25;
+    fg:          #d2cbbc;
+    accent:      #5eb8c2;
+    accent-2:    #8387b4;
+    border:      #5eb8c2;
+    urgent:      #cb8a86;
+    selected-fg: #d2cbbc;
+    entry-fg:    #8387b4;
+    prompt-fg:   #5eb8c2;
+    header:      #8387b4;
 
     background-color: @bg;
 }
